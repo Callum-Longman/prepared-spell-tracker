@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Fireball",
+    "level": 3,
+    "classes": ["Wizard", "Sorcerer"]
+  },
+  {
+    "name": "Cure Wounds",
+    "level": 1,
+    "classes": ["Cleric", "Druid", "Bard"]
+  }
+]
