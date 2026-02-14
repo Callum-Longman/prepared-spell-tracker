@@ -2,7 +2,7 @@ let spells = [];
 let prepared = new Set();
 
 async function loadSpells() {
-    const res = await fetch("spells.json");
+    const res = await fetch("spells2014.json");
     spells = await res.json();
     setupFilters();
     renderSpells();
