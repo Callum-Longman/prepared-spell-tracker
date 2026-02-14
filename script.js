@@ -20,17 +20,17 @@ function setupFilters() {
         levels.add(spell.level);
     });
 
-    classes.forEach(c => {
+    [...classes].sort().forEach(c => {
         const opt = document.createElement("option");
         opt.value = c;
-        opt.textContent = c;
+        opt.textContent = capitalize(c);
         classFilter.appendChild(opt);
     });
 
-    [...levels].sort((a, b) => a - b).forEach(l => {
+    [...levels].sort().forEach(l => {
         const opt = document.createElement("option");
         opt.value = l;
-        opt.textContent = l;
+        opt.textContent = capitalize(l);
         levelFilter.appendChild(opt);
     });
 
@@ -48,7 +48,7 @@ function renderSpells() {
     spells
         .filter(spell => {
             if (classFilter !== "all" && !spell.classes.includes(classFilter)) return false;
-            if (levelFilter !== "all" && spell.level != levelFilter) return false;
+            if (levelFilter !== "all" && spell.level !== levelFilter) return false;
             return true;
         })
         .forEach(spell => {
@@ -60,8 +60,9 @@ function renderSpells() {
             div.innerHTML = `
                 <label>
                     <input type="checkbox" ${checked}>
-                    <strong>${spell.name}</strong> (Level ${spell.level})
+                    <strong>${spell.name}</strong> (${capitalize(spell.level)})
                 </label>
+                <div class="desc">${spell.description.substring(0, 120)}...</div>
             `;
 
             const checkbox = div.querySelector("input");
@@ -75,6 +76,10 @@ function renderSpells() {
 
             container.appendChild(div);
         });
+}
+
+function capitalize(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 loadSpells();
