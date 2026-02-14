@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D&D Spell Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f4f4;
+        }
+        h1 {
+            margin-bottom: 10px;
+        }
+        .controls {
+            margin-bottom: 15px;
+        }
+        .spell {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spell Tracker</h1>
+
+    <div class="controls">
+        Class:
+        <select id="classFilter">
+            <option value="all">All</option>
+        </select>
+
+        Level:
+        <select id="levelFilter">
+            <option value="all">All</option>
+        </select>
+    </div>
+
+    <div id="spellList"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
