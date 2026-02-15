@@ -173,9 +173,8 @@ function renderSpells() {
     // Render available spells (right column) as cards in a grid
     available.forEach(spell => {
         const div = document.createElement("div");
-        div.className = "spell";
-        // Show checkbox checked if this spell is prepared
         const isPrepared = prepared.has(spell.name);
+        div.className = "spell" + (isPrepared ? " checked" : "");
 
         // Compose some extra metadata (type, classes) if available
         const typeInfo = spell.type ? ` • ${spell.type}` : "";
