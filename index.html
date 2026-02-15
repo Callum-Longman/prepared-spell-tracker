@@ -27,24 +27,60 @@
             color: #444;
             margin-top: 5px;
         }
+        .columns {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        .column {
+            flex: 1;
+        }
+        .prepared-column {
+            max-width: 380px;
+        }
+        .available-column {
+            flex: 2;
+        }
+        .controls .filters select {
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
     <h1>Spell Tracker</h1>
 
     <div class="controls">
-        Class:
-        <select id="classFilter">
-            <option value="all">All</option>
-        </select>
+        <div class="filters">
+            Class:
+            <select id="classFilter">
+                <option value="all">All</option>
+            </select>
 
-        Level:
-        <select id="levelFilter">
-            <option value="all">All</option>
-        </select>
+            Level:
+            <select id="levelFilter">
+                <option value="all">All</option>
+            </select>
+
+            Sort:
+            <select id="sortSelect">
+                <option value="none">None</option>
+                <option value="alpha">Alphabetical</option>
+                <option value="level">By level</option>
+            </select>
+        </div>
     </div>
 
-    <div id="spellList"></div>
+    <div class="columns">
+        <div class="column prepared-column">
+            <h2>Prepared</h2>
+            <div id="preparedList"></div>
+        </div>
+
+        <div class="column available-column">
+            <h2>Available Spells</h2>
+            <div id="spellList"></div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
