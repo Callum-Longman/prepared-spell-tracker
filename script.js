@@ -254,7 +254,7 @@
 
         availableContainer.appendChild(div);
     });
-}
+
 
 // Helper: capitalizes the first letter of a string
 function capitalize(text) {
