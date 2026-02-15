@@ -44,6 +44,38 @@
         .controls .filters select {
             margin-right: 8px;
         }
+        .controls .filters input[type="search"] {
+            padding: 4px 6px;
+            margin-right: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        /* Available spells display as cards in a responsive grid */
+        .available-column #spellList {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+        .available-column .spell {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 120px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+        .available-column .spell .card-meta {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 6px;
+        }
+        .available-column .spell .card-header {
+            display:flex;
+            align-items:center;
+            gap:8px;
+        }
     </style>
 </head>
 <body>
@@ -68,6 +100,8 @@
                 <option value="alpha">Alphabetical</option>
                 <option value="level">By level</option>
             </select>
+            Search:
+            <input id="searchInput" type="search" placeholder="Search spells (name or description)" />
         </div>
     </div>
 

@@ -52,6 +52,9 @@ function setupFilters() {
     classFilter.onchange = renderSpells;
     levelFilter.onchange = renderSpells;
     if (sortSelect) sortSelect.onchange = renderSpells;
+    // Wire search input (re-render while typing)
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) searchInput.oninput = renderSpells;
 }
 
 // renderSpells: filters spells according to selected filters and renders
@@ -60,6 +63,7 @@ function renderSpells() {
     const classFilter = document.getElementById("classFilter").value;
     const levelFilter = document.getElementById("levelFilter").value;
     const sortMethod = document.getElementById("sortSelect")?.value || "none";
+    const searchTerm = document.getElementById("searchInput")?.value.trim().toLowerCase() || "";
 
     const availableContainer = document.getElementById("spellList");
     const preparedContainer = document.getElementById("preparedList");
@@ -100,7 +104,12 @@ function renderSpells() {
     });
 
     // Available shows all filtered spells (including those already prepared)
-    const available = filtered.slice();
+    // Apply search filtering to available list (search name and description)
+    const available = filtered.slice().filter(spell => {
+        if (!searchTerm) return true;
+        const hay = ((spell.name || "") + " " + (spell.description || "")).toLowerCase();
+        return hay.includes(searchTerm);
+    });
     // Prepared list shows all prepared spells (regardless of current filters)
     const preparedList = spells.filter(s => prepared.has(s.name));
 
@@ -161,19 +170,26 @@ function renderSpells() {
         preparedContainer.appendChild(div);
     });
 
-    // Render available spells (right column)
+    // Render available spells (right column) as cards in a grid
     available.forEach(spell => {
         const div = document.createElement("div");
         div.className = "spell";
         // Show checkbox checked if this spell is prepared
         const isPrepared = prepared.has(spell.name);
 
+        // Compose some extra metadata (type, classes) if available
+        const typeInfo = spell.type ? ` • ${spell.type}` : "";
+        const classesInfo = (spell.classes && spell.classes.length) ? ` • ${spell.classes.join(", ")}` : "";
+
         div.innerHTML = `
-            <label>
-                <input type="checkbox" ${isPrepared ? 'checked' : ''}>
-                <strong>${spell.name}</strong> (${capitalize(spell.level)})
-            </label>
-            <div class="desc">${spell.description.substring(0, 120)}...</div>
+            <div class="card-header">
+                <label style="margin:0;display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" ${isPrepared ? 'checked' : ''}>
+                    <strong>${spell.name}</strong>
+                </label>
+            </div>
+            <div class="card-meta">${capitalize(spell.level)}${typeInfo}${classesInfo}</div>
+            <div class="desc">${(spell.description || "").substring(0, 140)}${(spell.description && spell.description.length>140)?'...':''}</div>
         `;
 
         const checkbox = div.querySelector("input");
