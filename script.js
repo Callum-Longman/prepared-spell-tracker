@@ -1,66 +1,69 @@
 // Global application state
 // `spells` holds the array of spell objects loaded from JSON.
 // `prepared` is a Set of spell names the user has marked as prepared.
-    available.forEach(spell => {
-        const div = document.createElement("div");
-        div.className = "spell";
-        // Show border if this spell is prepared
-        const isPrepared = prepared.has(spell.name);
-        const isExpanded = !!expandedSpells[spell.name];
-        if (isPrepared) div.classList.add("selected");
-        if (isExpanded) div.classList.add("expanded");
+let spells = [];
+let prepared = new Set();
+// `preparedIgnored` holds names of prepared spells that should NOT count towards the total
+let preparedIgnored = new Set();
 
-        // Compose extra metadata
-        const typeInfo = spell.type ? ` • ${spell.type}` : "";
-        const classesInfo = (spell.classes && spell.classes.length) ? ` • ${spell.classes.join(", ")}` : "";
+// loadSpells: fetch the spells JSON, store it, then initialize UI
+// - Uses `spells2014.json` by default (can be changed to another file)
+async function loadSpells() {
+    const res = await fetch("spells2014.json");
+    spells = await res.json();
+    setupFilters(); // populate class/level dropdowns based on data
+    renderSpells(); // show the first view of spells
+}
 
-        // Expand/collapse toggle
-        const expandBtn = `<button class=\"expand-toggle\" tabindex=\"-1\" title=\"${isExpanded ? 'Collapse' : 'Expand'}\">${isExpanded ? '−' : '+'}</button>`;
+// setupFilters: builds the <select> options for class and level filters
+// - Finds unique classes and levels from `spells` and appends options
+// - Attaches change handlers so the spell list updates when filters change
+function setupFilters() {
+    const classFilter = document.getElementById("classFilter");
+    const levelFilter = document.getElementById("levelFilter");
+    const sortSelect = document.getElementById("sortSelect");
 
-        // Card header (always visible)
-        div.innerHTML = `
-            <div class=\"card-header\">\n                <span style=\"display:flex;align-items:center;gap:8px;\">\n                    <strong>${spell.name}</strong>\n                </span>\n                ${expandBtn}\n            </div>\n            <div class=\"card-meta\">${capitalize(spell.level)}${typeInfo}${classesInfo}</div>\n            <div class=\"desc\">${(spell.description || "").substring(0, 140)}${(spell.description && spell.description.length>140)?'...':''}</div>\n        `;
+    const classes = new Set();
+    const levels = new Set();
 
-        // Add details if expanded
-        if (isExpanded) {
-            // School, ritual, actions, attack/save, damage, full description
-            const school = spell.school || (spell.type ? spell.type.split(" ")[0] : "");
-            const ritual = spell.ritual ? 'Yes' : (/ritual/i.test(spell.type||"") ? 'Yes' : 'No');
-            const classes = (spell.classes || []).join(", ");
-            const actions = spell.casting_time || spell.actions || '';
-            const attack = spell.attack_roll || spell.save || spell['attack/save'] || '';
-            const damage = spell.damage || spell['damage/effect'] || '';
-            const desc = spell.description || '';
-            div.innerHTML += `
-                <div class=\"card-details\">\n                    <div><strong>Name:</strong> ${spell.name}</div>\n                    <div><strong>Level:</strong> ${capitalize(spell.level)}</div>\n                    <div><strong>School:</strong> ${school}</div>\n                    <div><strong>Ritual:</strong> ${ritual}</div>\n                    <div><strong>Class:</strong> ${classes}</div>\n                    <div><strong>Actions:</strong> ${actions}</div>\n                    <div><strong>Attack/Save:</strong> ${attack}</div>\n                    <div><strong>Damage/Effect:</strong> ${damage}</div>\n                    <div style=\"margin-top:8px;\"><strong>Description:</strong><br>${desc}</div>\n                </div>\n            `;
-        }
-
-        // Expand/collapse logic
-        const expandToggle = div.querySelector(".expand-toggle");
-        expandToggle.onclick = (e) => {
-            e.stopPropagation();
-            expandedSpells[spell.name] = !isExpanded;
-            renderSpells();
-        };
-
-        // Toggle prepared state on card click (not on expand/collapse button)
-        div.onclick = (e) => {
-            if (e.target === expandToggle) {
-                // handled above
-                return;
-            }
-            // Toggle prepared state
-            if (isPrepared) {
-                prepared.delete(spell.name);
-                preparedIgnored.delete(spell.name);
-            } else {
-                prepared.add(spell.name);
-            }
-            renderSpells();
-        };
-
-        availableContainer.appendChild(div);
+    // Gather unique classes and levels from the spells data
+    spells.forEach(spell => {
+        spell.classes.forEach(c => classes.add(c));
+        levels.add(spell.level);
     });
+
+    // Create an <option> for each class (sorted alphabetically)
+    [...classes].sort().forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = capitalize(c);
+        classFilter.appendChild(opt);
+    });
+
+    // Create an <option> for each level (sorted)
+    [...levels].sort().forEach(l => {
+        const opt = document.createElement("option");
+        opt.value = l;
+        opt.textContent = capitalize(l);
+        levelFilter.appendChild(opt);
+    });
+
+    // Re-render spells when the user changes filters
+    classFilter.onchange = renderSpells;
+    levelFilter.onchange = renderSpells;
+    if (sortSelect) sortSelect.onchange = renderSpells;
+    // Wire search input (re-render while typing)
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) searchInput.oninput = renderSpells;
+}
+
+// renderSpells: filters spells according to selected filters and renders
+// each spell as a small card with a checkbox to mark it as prepared.
+function renderSpells() {
+    const classFilter = document.getElementById("classFilter").value;
+    const levelFilter = document.getElementById("levelFilter").value;
+    const sortMethod = document.getElementById("sortSelect")?.value || "none";
+    const searchTerm = document.getElementById("searchInput")?.value.trim().toLowerCase() || "";
 
     const availableContainer = document.getElementById("spellList");
     const preparedContainer = document.getElementById("preparedList");
@@ -167,88 +170,36 @@
         preparedContainer.appendChild(div);
     });
 
-    // Track expanded state for cards (by spell name)
-    if (!window._expandedSpells) window._expandedSpells = {};
-    const expandedSpells = window._expandedSpells;
-
+    // Render available spells (right column) as cards in a grid
     available.forEach(spell => {
         const div = document.createElement("div");
         div.className = "spell";
         // Show checkbox checked if this spell is prepared
         const isPrepared = prepared.has(spell.name);
-        const isExpanded = !!expandedSpells[spell.name];
-        if (isExpanded) div.classList.add("expanded");
 
-        // Compose extra metadata
+        // Compose some extra metadata (type, classes) if available
         const typeInfo = spell.type ? ` • ${spell.type}` : "";
         const classesInfo = (spell.classes && spell.classes.length) ? ` • ${spell.classes.join(", ")}` : "";
 
-        // Expand/collapse toggle
-        const expandBtn = `<button class="expand-toggle" tabindex="-1" title="${isExpanded ? 'Collapse' : 'Expand'}">${isExpanded ? '−' : '+'}</button>`;
-
-        // Card header (always visible)
         div.innerHTML = `
             <div class="card-header">
                 <label style="margin:0;display:flex;align-items:center;gap:8px;">
                     <input type="checkbox" ${isPrepared ? 'checked' : ''}>
                     <strong>${spell.name}</strong>
                 </label>
-                ${expandBtn}
             </div>
             <div class="card-meta">${capitalize(spell.level)}${typeInfo}${classesInfo}</div>
             <div class="desc">${(spell.description || "").substring(0, 140)}${(spell.description && spell.description.length>140)?'...':''}</div>
         `;
 
-        // Add details if expanded
-        if (isExpanded) {
-            // School, ritual, actions, attack/save, damage, full description
-            const school = spell.school || (spell.type ? spell.type.split(" ")[0] : "");
-            const ritual = spell.ritual ? 'Yes' : (/ritual/i.test(spell.type||"") ? 'Yes' : 'No');
-            const classes = (spell.classes || []).join(", ");
-            const actions = spell.casting_time || spell.actions || '';
-            const attack = spell.attack_roll || spell.save || spell['attack/save'] || '';
-            const damage = spell.damage || spell['damage/effect'] || '';
-            const desc = spell.description || '';
-            div.innerHTML += `
-                <div class="card-details">
-                    <div><strong>Name:</strong> ${spell.name}</div>
-                    <div><strong>Level:</strong> ${capitalize(spell.level)}</div>
-                    <div><strong>School:</strong> ${school}</div>
-                    <div><strong>Ritual:</strong> ${ritual}</div>
-                    <div><strong>Class:</strong> ${classes}</div>
-                    <div><strong>Actions:</strong> ${actions}</div>
-                    <div><strong>Attack/Save:</strong> ${attack}</div>
-                    <div><strong>Damage/Effect:</strong> ${damage}</div>
-                    <div style="margin-top:8px;"><strong>Description:</strong><br>${desc}</div>
-                </div>
-            `;
-        }
-
-        // Checkbox logic
-        const checkbox = div.querySelector("input[type=checkbox]");
-        checkbox.onchange = (e) => {
-            e.stopPropagation();
+        const checkbox = div.querySelector("input");
+        checkbox.onchange = () => {
             if (checkbox.checked) {
                 prepared.add(spell.name);
             } else {
                 prepared.delete(spell.name);
                 preparedIgnored.delete(spell.name);
             }
-            renderSpells();
-        };
-
-        // Expand/collapse logic
-        const expandToggle = div.querySelector(".expand-toggle");
-        expandToggle.onclick = (e) => {
-            e.stopPropagation();
-            expandedSpells[spell.name] = !isExpanded;
-            renderSpells();
-        };
-
-        // Also expand/collapse on card click (not on checkbox)
-        div.onclick = (e) => {
-            if (e.target === checkbox || e.target === expandToggle) return;
-            expandedSpells[spell.name] = !isExpanded;
             renderSpells();
         };
 
