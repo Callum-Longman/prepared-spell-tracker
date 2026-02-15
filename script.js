@@ -103,7 +103,8 @@ async function loadSpells() {
 // - Attaches change handlers so the spell list updates when filters change
 function setupFilters() {
     const classFilter = document.getElementById("classFilter");
-    const levelFilter = document.getElementById("levelFilter");
+    const minLevelFilter = document.getElementById("minLevelFilter");
+    const maxLevelFilter = document.getElementById("maxLevelFilter");
     const sortSelect = document.getElementById("sortSelect");
 
     const classes = new Set();
@@ -123,17 +124,36 @@ function setupFilters() {
         classFilter.appendChild(opt);
     });
 
-    // Create an <option> for each level (sorted)
-    [...levels].sort().forEach(l => {
-        const opt = document.createElement("option");
-        opt.value = l;
-        opt.textContent = capitalize(l);
-        levelFilter.appendChild(opt);
+    // Level options: sort numerically/cantrip first, then by number
+    const levelArr = [...levels];
+    levelArr.sort((a, b) => {
+        function levelToNumber(l) {
+            if (!l) return 100;
+            const s = String(l);
+            const m = s.match(/\d+/);
+            if (m) return Number(m[0]);
+            if (/cantrip/i.test(s)) return 0;
+            return 100;
+        }
+        return levelToNumber(a) - levelToNumber(b);
+    });
+
+    // Populate min/max level dropdowns
+    [minLevelFilter, maxLevelFilter].forEach((filter, idx) => {
+        if (!filter) return;
+        filter.innerHTML = '<option value="all">All</option>';
+        levelArr.forEach(l => {
+            const opt = document.createElement("option");
+            opt.value = l;
+            opt.textContent = capitalize(l);
+            filter.appendChild(opt);
+        });
     });
 
     // Re-render spells when the user changes filters
     classFilter.onchange = renderSpells;
-    levelFilter.onchange = renderSpells;
+    if (minLevelFilter) minLevelFilter.onchange = renderSpells;
+    if (maxLevelFilter) maxLevelFilter.onchange = renderSpells;
     if (sortSelect) sortSelect.onchange = renderSpells;
     // Wire search input (re-render while typing)
     const searchInput = document.getElementById("searchInput");
@@ -144,7 +164,8 @@ function setupFilters() {
 // each spell as a small card with a checkbox to mark it as prepared.
 function renderSpells() {
     const classFilter = document.getElementById("classFilter").value;
-    const levelFilter = document.getElementById("levelFilter").value;
+    const minLevel = document.getElementById("minLevelFilter")?.value || "all";
+    const maxLevel = document.getElementById("maxLevelFilter")?.value || "all";
     const sortMethod = document.getElementById("sortSelect")?.value || "none";
     const searchTerm = document.getElementById("searchInput")?.value.trim().toLowerCase() || "";
 
@@ -179,10 +200,22 @@ function renderSpells() {
 
     const comparator = getComparator(sortMethod);
 
+    // Helper for level string to number
+    function levelToNumber(level) {
+        if (!level) return 100;
+        const s = String(level);
+        const m = s.match(/\d+/);
+        if (m) return Number(m[0]);
+        if (/cantrip/i.test(s)) return 0;
+        return 100;
+    }
+
     // Build available and prepared arrays
     const filtered = spells.filter(spell => {
         if (classFilter !== "all" && !spell.classes.includes(classFilter)) return false;
-        if (levelFilter !== "all" && spell.level !== levelFilter) return false;
+        const spellLevelNum = levelToNumber(spell.level);
+        if (minLevel !== "all" && spellLevelNum < levelToNumber(minLevel)) return false;
+        if (maxLevel !== "all" && spellLevelNum > levelToNumber(maxLevel)) return false;
         return true;
     });
 
