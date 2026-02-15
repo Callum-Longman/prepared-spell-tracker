@@ -3,6 +3,8 @@
 // `prepared` is a Set of spell names the user has marked as prepared.
 let spells = [];
 let prepared = new Set();
+// `preparedIgnored` holds names of prepared spells that should NOT count towards the total
+let preparedIgnored = new Set();
 
 // loadSpells: fetch the spells JSON, store it, then initialize UI
 // - Uses `spells2014.json` by default (can be changed to another file)
@@ -97,7 +99,9 @@ function renderSpells() {
         return true;
     });
 
-    const available = filtered.filter(s => !prepared.has(s.name));
+    // Available shows all filtered spells (including those already prepared)
+    const available = filtered.slice();
+    // Prepared list shows all prepared spells (regardless of current filters)
     const preparedList = spells.filter(s => prepared.has(s.name));
 
     if (comparator) {
@@ -105,22 +109,52 @@ function renderSpells() {
         preparedList.sort(comparator);
     }
 
+    // Update prepared counter (exclude any marked as ignored)
+    const countedPrepared = Array.from(prepared).filter(n => !preparedIgnored.has(n)).length;
+    const counterEl = document.getElementById("preparedCounter");
+    if (counterEl) counterEl.textContent = `Prepared: ${countedPrepared}`;
+
     // Render prepared spells (left column)
     preparedList.forEach(spell => {
         const div = document.createElement("div");
         div.className = "spell";
+
+        // Two checkboxes:
+        // - main checkbox: reflects prepared state (can unprepare)
+        // - ignore checkbox: marks this prepared spell as not counted against total
+        const isIgnored = preparedIgnored.has(spell.name);
+
         div.innerHTML = `
-            <label>
-                <input type="checkbox" checked>
-                <strong>${spell.name}</strong> (${capitalize(spell.level)})
-            </label>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <label style="margin:0;">
+                    <input type="checkbox" checked class="prepared-toggle">
+                    <strong>${spell.name}</strong>
+                </label>
+                <label style="font-size:0.85em;opacity:0.9;">
+                    <input type="checkbox" class="ignore-toggle" ${isIgnored ? 'checked' : ''}>
+                    Not counted
+                </label>
+            </div>
             <div class="desc">${spell.description.substring(0, 120)}...</div>
         `;
 
-        const checkbox = div.querySelector("input");
-        checkbox.onchange = () => {
-            // unprepare
-            prepared.delete(spell.name);
+        const preparedToggle = div.querySelector(".prepared-toggle");
+        const ignoreToggle = div.querySelector(".ignore-toggle");
+
+        // Unprepare when main checkbox is unchecked
+        preparedToggle.onchange = () => {
+            if (!preparedToggle.checked) {
+                prepared.delete(spell.name);
+                preparedIgnored.delete(spell.name);
+                renderSpells();
+            }
+        };
+
+        // Toggle whether this prepared spell counts towards the total
+        ignoreToggle.onchange = () => {
+            if (ignoreToggle.checked) preparedIgnored.add(spell.name);
+            else preparedIgnored.delete(spell.name);
+            // Only the counter needs updating, but re-render to keep UI consistent
             renderSpells();
         };
 
@@ -131,10 +165,12 @@ function renderSpells() {
     available.forEach(spell => {
         const div = document.createElement("div");
         div.className = "spell";
+        // Show checkbox checked if this spell is prepared
+        const isPrepared = prepared.has(spell.name);
 
         div.innerHTML = `
             <label>
-                <input type="checkbox">
+                <input type="checkbox" ${isPrepared ? 'checked' : ''}>
                 <strong>${spell.name}</strong> (${capitalize(spell.level)})
             </label>
             <div class="desc">${spell.description.substring(0, 120)}...</div>
@@ -142,9 +178,12 @@ function renderSpells() {
 
         const checkbox = div.querySelector("input");
         checkbox.onchange = () => {
-            // mark prepared
-            if (checkbox.checked) prepared.add(spell.name);
-            else prepared.delete(spell.name);
+            if (checkbox.checked) {
+                prepared.add(spell.name);
+            } else {
+                prepared.delete(spell.name);
+                preparedIgnored.delete(spell.name);
+            }
             renderSpells();
         };
 
