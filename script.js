@@ -1,18 +1,101 @@
 // Global application state
-// `spells` holds the array of spell objects loaded from JSON.
-// `prepared` is a Set of spell names the user has marked as prepared.
 let spells = [];
 let prepared = new Set();
-// `preparedIgnored` holds names of prepared spells that should NOT count towards the total
 let preparedIgnored = new Set();
+let currentProfile = null;
+let profiles = [];
+
+// --- Profile management ---
+function loadProfiles() {
+    const raw = localStorage.getItem('spellProfiles');
+    profiles = raw ? JSON.parse(raw) : [];
+    if (!profiles.length) {
+        profiles = [{ name: 'Default', prepared: [], ignored: [] }];
+        saveProfiles();
+    }
+}
+
+function saveProfiles() {
+    localStorage.setItem('spellProfiles', JSON.stringify(profiles));
+}
+
+function setCurrentProfile(name) {
+    const profile = profiles.find(p => p.name === name);
+    if (!profile) return;
+    currentProfile = profile.name;
+    prepared = new Set(profile.prepared);
+    preparedIgnored = new Set(profile.ignored);
+    updateProfileSelect();
+    renderSpells();
+}
+
+function updateProfileSelect() {
+    const select = document.getElementById('profileSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    profiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        if (p.name === currentProfile) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+function addProfile() {
+    let name = prompt('Enter new profile name:');
+    if (!name) return;
+    name = name.trim();
+    if (!name || profiles.some(p => p.name === name)) {
+        alert('Profile name must be unique and non-empty.');
+        return;
+    }
+    profiles.push({ name, prepared: [], ignored: [] });
+    saveProfiles();
+    setCurrentProfile(name);
+}
+
+function deleteProfile() {
+    if (profiles.length === 1) {
+        alert('At least one profile must exist.');
+        return;
+    }
+    if (!confirm('Delete this profile? This cannot be undone.')) return;
+    const idx = profiles.findIndex(p => p.name === currentProfile);
+    if (idx !== -1) {
+        profiles.splice(idx, 1);
+        saveProfiles();
+        setCurrentProfile(profiles[0].name);
+    }
+}
+
+function saveCurrentProfileState() {
+    const profile = profiles.find(p => p.name === currentProfile);
+    if (profile) {
+        profile.prepared = Array.from(prepared);
+        profile.ignored = Array.from(preparedIgnored);
+        saveProfiles();
+    }
+}
 
 // loadSpells: fetch the spells JSON, store it, then initialize UI
 // - Uses `spells2014.json` by default (can be changed to another file)
 async function loadSpells() {
     const res = await fetch("spells2014.json");
     spells = await res.json();
-    setupFilters(); // populate class/level dropdowns based on data
-    renderSpells(); // show the first view of spells
+    loadProfiles();
+    setupFilters();
+    // Setup profile select/add/delete
+    const select = document.getElementById('profileSelect');
+    if (select) {
+        select.onchange = e => setCurrentProfile(e.target.value);
+    }
+    const addBtn = document.getElementById('addProfileBtn');
+    if (addBtn) addBtn.onclick = addProfile;
+    const delBtn = document.getElementById('deleteProfileBtn');
+    if (delBtn) delBtn.onclick = deleteProfile;
+    // Set initial profile
+    setCurrentProfile(profiles[0].name);
 }
 
 // setupFilters: builds the <select> options for class and level filters
@@ -141,7 +224,7 @@ function renderSpells() {
                 </label>
                 <label style="font-size:0.85em;opacity:0.9;">
                     <input type="checkbox" class="ignore-toggle" ${isIgnored ? 'checked' : ''}>
-                    Not counted
+                    Domain Spell
                 </label>
             </div>
             <div class="desc">${spell.description.substring(0, 120)}...</div>
@@ -155,6 +238,7 @@ function renderSpells() {
             if (!preparedToggle.checked) {
                 prepared.delete(spell.name);
                 preparedIgnored.delete(spell.name);
+                saveCurrentProfileState();
                 renderSpells();
             }
         };
@@ -163,7 +247,7 @@ function renderSpells() {
         ignoreToggle.onchange = () => {
             if (ignoreToggle.checked) preparedIgnored.add(spell.name);
             else preparedIgnored.delete(spell.name);
-            // Only the counter needs updating, but re-render to keep UI consistent
+            saveCurrentProfileState();
             renderSpells();
         };
 
@@ -199,6 +283,7 @@ function renderSpells() {
                 prepared.delete(spell.name);
                 preparedIgnored.delete(spell.name);
             }
+            saveCurrentProfileState();
             renderSpells();
         };
 
